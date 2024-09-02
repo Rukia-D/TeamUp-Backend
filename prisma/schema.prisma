@@ -1,0 +1,82 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int               @id @default(autoincrement())
+  name             String
+  email            String            @unique
+  passwordHash     String
+  profile          String?
+  fcmToken         String?
+
+  workspaces       WorkspaceMember[] @relation("UserWorkspaceMembers")
+  assignedCards    CardUser[]        @relation("UserAssignedCards")
+}
+
+model Workspace {
+  id            Int               @id @default(autoincrement())
+  title         String
+  icon          String?
+
+  members       WorkspaceMember[] @relation("WorkspaceMembers")
+  boards        Board[]
+}
+
+model Board {
+  id            Int        @id @default(autoincrement())
+  title         String
+  workspaceId   Int       
+  lastPosition  Int        @default(0)
+
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id])
+  cards         Card[]
+}
+
+model Card {
+  id            Int         @id @default(autoincrement())
+  title         String
+  description   String?
+  image         String?
+  boardId       Int
+  position      Int     
+
+  board         Board       @relation(fields: [boardId], references: [id])
+  subtasks      Subtask[]
+  assignedUsers CardUser[]  @relation("CardAssignedUsers")
+}
+
+model Subtask {
+  id            Int         @id @default(autoincrement())
+  title         String
+  isDone        Boolean     @default(false)
+  cardId        Int
+
+  card          Card        @relation(fields: [cardId], references: [id])
+}
+
+model CardUser {
+  cardId        Int
+  userId        Int
+
+  card          Card        @relation("CardAssignedUsers", fields: [cardId], references: [id], onDelete: Cascade)
+  user          User        @relation("UserAssignedCards", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+}
+
+model WorkspaceMember {
+  userId        Int
+  workspaceId   Int
+
+  user          User       @relation("UserWorkspaceMembers", fields: [userId], references: [id])
+  workspace     Workspace  @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
+
+  @@id([userId, workspaceId])
+}
